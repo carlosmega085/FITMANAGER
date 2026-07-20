@@ -92,7 +92,7 @@ APP-FitManager/
 La aplicación consume la API REST de **FitManager**. La URL base del servidor está configurada en `api/axios.ts`:
 
 ```typescript
-const API_BASE_URL = "https://demo-modapos.top/api/mobile";
+const API_BASE_URL = "https://tudominio.com/api/mobile";
 ```
 
 ### Principales Endpoints Consumidos
