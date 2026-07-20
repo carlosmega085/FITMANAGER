@@ -1,192 +1,125 @@
-# API Móvil - Sistema Gestión Gimnasio
+# FITMANAGER - Aplicación Móvil de Control de Acceso
 
-Esta documentación describe la API construida para ser consumida por la aplicación móvil (React Native + Expo) del gimnasio. 
+**FITMANAGER** es una aplicación móvil nativa desarrollada con **React Native** y **Expo SDK 53**, diseñada para la gestión operativa y el control de acceso en tiempo real a gimnasios y centros deportivos.
 
-Toda la lógica de acceso **reutiliza el `AccessService`** original para mantener la coherencia y no duplicar código con el frontend web.
-
-## URL Base
-`https://[tu-dominio]/api/mobile`
+La aplicación permite al personal de **Recepción** y **Dueños** validar accesos mediante escaneo de código de barras/QR o búsqueda manual de socios, consultar el estado de membresías activas, visualizar alertas y monitorear el historial de asistencias de forma ágil y segura.
 
 ---
 
-## 1. Autenticación
+## Características Principales
 
-Todas las peticiones protegidas deben incluir el header:
-`Authorization: Bearer {token}`
-
-### Login
-- **Endpoint:** `POST /login`
-- **Rate Limit:** 5 intentos por minuto.
-- **Acceso:** Público (Solo roles `Dueño` y `Recepción` tendrán éxito).
-
-**Payload:**
-```json
-{
-  "username": "dueño1",
-  "password": "password123"
-}
-```
-
-**Respuesta Exitosa (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Login exitoso",
-  "token": "1|abcdef123456789...",
-  "user": {
-    "id": 1,
-    "name": "Juan Perez",
-    "username": "dueño1",
-    "email": "admin@gym.com",
-    "roles": ["Dueño"]
-  }
-}
-```
-
-**Errores:**
-- `401 Unauthorized`: No autenticado o token inválido (o credenciales incorrectas en el login).
-- `403 Forbidden`: El usuario no tiene el rol de `Dueño` o `Recepción`.
+- **Escáner QR / Código de Barras:** Integración fluida con la cámara usando `expo-camera` para lectura rápida de credenciales físicas o digitales.
+- **Ingreso Manual y Búsqueda Directa:** Alternativa para ingresar el código manualmente o buscar clientes por nombre/código en un modal interactivo con búsqueda optimizada (`debounced search`).
+- **Verificación Instantánea:** Validación en tiempo real conectada al backend (`AccessService`), mostrando estado de membresía (Activo/Inactivo), fecha de vencimiento, foto del socio y tipo de pase.
+- **Feedback Auditivo y Visual:** Respuestas sonoras y de color según la resolución de acceso (_Permitido / Denegado / Advertencia_).
+- **Historial de Asistencias:** Visualización cronológica de entradas y salidas registradas, con filtros integrados y soporte para _pull-to-refresh_.
+- **Autenticación y Sesión Segura:** Manejo de tokens JWT almacenados de forma encriptada en el dispositivo mediante `expo-secure-store`.
+- **Navegación Basada en Roles:** Estructura modular de pantallas mediante `expo-router` con vistas protegidas para usuarios autenticados.
 
 ---
 
-### Obtener Perfil / Yo
-- **Endpoint:** `GET /me` (Alias `GET /perfil`)
-- **Acceso:** Protegido (Requiere Token).
+## Stack Tecnológico
 
-**Respuesta Exitosa (200 OK):**
-```json
-{
-  "success": true,
-  "user": {
-    "id": 1,
-    "name": "Juan Perez",
-    "username": "dueño1",
-    "email": "admin@gym.com",
-    "roles": ["Dueño"]
-  }
-}
+| Tecnología                | Descripción                                                                                 |
+| :------------------------ | :------------------------------------------------------------------------------------------ |
+| **React Native** (0.79.6) | Framework base para desarrollo móvil multiplataforma.                                       |
+| **Expo** (v53.0.27)       | Plataforma y conjunto de herramientas para despliegue y APIs nativas.                       |
+| **Expo Router** (v5.1.11) | Enrutamiento declarativo basado en la estructura de archivos (`app/`).                      |
+| **Zustand**               | Gestión del estado global ligero (Autenticación y Estado de UI).                            |
+| **TanStack React Query**  | Manejo de peticiones asíncronas, caché y actualización automática de datos.                 |
+| **Axios**                 | Cliente HTTP configurado con interceptores para inyección de tokens y control de 401.       |
+| **React Native Paper**    | Componentes de UI con diseño moderno y soporte completo de temas.                           |
+| **Expo SecureStore**      | Almacenamiento seguro del token de acceso en el almacenamiento de credenciales del sistema. |
+
+---
+
+## Estructura del Proyecto
+
+```text
+APP-FitManager/
+├── api/                  # Configuración de Axios e interceptores de autenticación
+│   └── axios.ts
+├── app/                  # Rutas y pantallas organizadas por Expo Router
+│   ├── (auth)/           # Flujo de autenticación (Login)
+│   ├── (main)/           # Vistas principales (Escáner, Historial, Perfil)
+│   └── _layout.tsx       # Layout raíz y proveedor de contextos
+├── assets/               # Imágenes, fuentes e íconos de la aplicación
+├── components/           # Componentes reutilizables de UI
+├── constants/            # Colores, temas y tipos constantes
+├── services/             # Integración con endpoints de la API (Auth, Accesos)
+├── store/                # Tiendas globales Zustand (auth.store, ui.store)
+├── types/                # Definiciones de tipos TypeScript
+├── utils/                # Utilidades (sonidos, notificaciones, ayuda)
+├── app.json              # Configuración general de Expo
+├── package.json          # Dependencias y scripts de ejecucion
+└── tsconfig.json         # Configuración del compilador TypeScript
 ```
 
 ---
 
-### Logout
-- **Endpoint:** `POST /logout`
-- **Acceso:** Protegido (Requiere Token).
-- **Acción:** Revoca el token actual del dispositivo móvil.
+## Requisitos Previos e Instalación
 
-**Respuesta Exitosa (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Sesión cerrada correctamente"
-}
-```
+### Requisitos
 
----
+- **Node.js**: v18.0.0 o superior
+- **npm** o **yarn**
+- Aplicación **Expo Go** en dispositivo móvil o un emulador **Android Studio / Xcode**
 
-## 2. Escáner de Acceso
+### Instalación
 
-Reutiliza al 100% las validaciones de `AccessService` (Horarios, días no laborables, estado de cliente, membresías activas, etc).
+1. Clona el repositorio:
 
-- **Endpoint:** `POST /verificar-acceso`
-- **Rate Limit:** 30 escaneos por minuto (por usuario).
-- **Acceso:** Protegido (Requiere Token).
+   ```bash
+   git clone https://github.com/carlosmega085/FITMANAGER.git
+   cd FITMANAGER
+   ```
 
-**Payload:**
-```json
-{
-  "codigo": "123456789"
-}
-```
+2. Instala las dependencias:
 
-**Respuesta Exitosa: Acceso Permitido (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Acceso Permitido. ¡Bienvenido!",
-  "status": "allowed",
-  "tipo": "entrada",
-  "warnings": [],
-  "cliente": {
-    "id": 5,
-    "nombre": "Carlos Cliente",
-    "codigo": "123456789",
-    "foto": "https://[tu-dominio]/storage/clientes/foto.jpg",
-    "estado": "activo",
-    "membresia": "Plan Mensual VIP",
-    "vence": "2026-06-15"
-  },
-  "asistencia": {
-    "hora": "14:30:00",
-    "fecha": "2026-05-17"
-  }
-}
-```
+   ```bash
+   npm install
+   ```
 
-**Respuesta de Error: Acceso Denegado (403 Forbidden):**
-```json
-{
-  "success": false,
-  "message": "Acceso Denegado: Sin membresía activa.",
-  "status": "denied",
-  "cliente": { ... } // Se envía si el cliente existe para mostrar su foto en pantalla roja
-}
-```
-
-> **Nota sobre `status`:** Puede devolver `allowed`, `denied`, `warning` (ej. fuera de horario pero permitido) o `error` (código no encontrado).
+3. Inicia el servidor de desarrollo Expo:
+   ```bash
+   npx expo start
+   ```
 
 ---
 
-## 3. Historial de Asistencias
+## Configuración de API & Backend
 
-- **Endpoint:** `GET /asistencias`
-- **Acceso:** Protegido (Requiere Token).
-- **Filtros Soportados (Query Params):**
-  - `?fecha=YYYY-MM-DD` (Por defecto filtra por la fecha de hoy).
-  - `?cliente=nombre` (Busca por nombre, apellido o código).
-  - `?page=2` (Paginación automática de 15 registros).
+La aplicación consume la API REST de **FitManager**. La URL base del servidor está configurada en `api/axios.ts`:
 
-**Respuesta Exitosa (200 OK):**
-```json
-{
-  "data": [
-    {
-      "id": 150,
-      "fecha": "2026-05-17",
-      "hora_entrada": "08:15:00",
-      "hora_salida": "10:30:00",
-      "cliente": {
-        "id": 10,
-        "nombre": "Ana Martinez",
-        "foto": "https://...",
-        "codigo": "456123"
-      }
-    }
-  ],
-  "links": { ... },
-  "meta": {
-    "current_page": 1,
-    "last_page": 5,
-    "per_page": 15,
-    "total": 75
-  }
-}
+```typescript
+const API_BASE_URL = "https://demo-modapos.top/api/mobile";
 ```
+
+### Principales Endpoints Consumidos
+
+| Método | Endpoint            | Descripción                                   | Acceso    |
+| :----- | :------------------ | :-------------------------------------------- | :-------- |
+| `POST` | `/login`            | Inicio de sesión para Dueños y Recepción      | Público   |
+| `GET`  | `/me`               | Obtiene el perfil del usuario autenticado     | Protegido |
+| `POST` | `/logout`           | Revoca la sesión activa en el dispositivo     | Protegido |
+| `POST` | `/verificar-acceso` | Valida el acceso de un socio mediante código  | Protegido |
+| `GET`  | `/asistencias`      | Obtiene el listado de asistencias registradas | Protegido |
+| `GET`  | `/clientes`         | Búsqueda de socios por código o nombre        | Protegido |
 
 ---
 
-## 4. Estructura Creada en Laravel
+## Scripts Disponibles
 
-Si necesitas hacer modificaciones en el futuro, los archivos creados se encuentran en:
+En la raíz del proyecto puedes ejecutar:
 
-1. **Rutas:** `routes/api.php`
-2. **Controladores:** 
-   - `app/Http/Controllers/Api/Mobile/AuthController.php`
-   - `app/Http/Controllers/Api/Mobile/AccesoController.php`
-   - `app/Http/Controllers/Api/Mobile/AsistenciaController.php`
-3. **Validadores (Requests):**
-   - `app/Http/Requests/Api/Mobile/LoginRequest.php`
-   - `app/Http/Requests/Api/Mobile/VerificarAccesoRequest.php`
-4. **Transformadores JSON (Resources):**
-   - `app/Http/Resources/Api/Mobile/ClienteResource.php`
-   - `app/Http/Resources/Api/Mobile/AsistenciaResource.php`
+- `npm start`: Inicia el servidor de desarrollo Metro Bundler.
+- `npm run android`: Compila y ejecuta la aplicación en un emulador o dispositivo Android conectado.
+- `npm run ios`: Compila y ejecuta la aplicación en el simulador de iOS (macOS requerido).
+- `npm run web`: Inicia la aplicación en modo Web.
+- `npm run lint`: Ejecuta el linter ESLint para comprobar la calidad del código.
+
+---
+
+## Licencia
+
+Este proyecto es de uso privado para la plataforma **FitManager**. Todos los derechos reservados.
